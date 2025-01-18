@@ -28,6 +28,8 @@ serve(async (req) => {
         top_k: 50,
         n: 1,
         stream: false,
+        presence_penalty: 0,
+        frequency_penalty: 0,
         model: "Qwen/Qwen2-VL-72B-Instruct",
         messages: [
           {
@@ -37,9 +39,9 @@ serve(async (req) => {
               {
                 type: "image_url",
                 image_url: {
-                  url: image_url,
-                },
-              },
+                  url: image_url
+                }
+              }
             ]
           }
         ],
