@@ -6,12 +6,14 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
     const { image_url } = await req.json()
+    console.log('Analyzing image:', image_url)
     
     const response = await fetch('https://api.nebius.ai/v1/vision/analyze', {
       method: 'POST',
@@ -35,6 +37,7 @@ serve(async (req) => {
     })
 
     const data = await response.json()
+    console.log('Nebius API response:', data)
     
     // Generate a fact based on the detected objects and text
     let fact = "I can see "
@@ -51,6 +54,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
+    console.error('Error analyzing image:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }

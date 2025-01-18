@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import CameraComponent from '@/components/Camera';
 import FactCard from '@/components/FactCard';
 import RecentDiscoveries from '@/components/RecentDiscoveries';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Discovery {
@@ -22,19 +22,25 @@ const Index = () => {
   }, []);
 
   const fetchRecentDiscoveries = async () => {
-    const { data, error } = await supabase
-      .from('discoveries')
-      .select('image_url, fact')
-      .order('created_at', { ascending: false })
-      .limit(5);
+    try {
+      const { data, error } = await supabase
+        .from('discoveries')
+        .select('image_url, fact')
+        .order('created_at', { ascending: false })
+        .limit(5);
 
-    if (error) {
+      if (error) throw error;
+
+      if (data) {
+        setDiscoveries(data.map(d => ({ imageUrl: d.image_url, fact: d.fact })));
+      }
+    } catch (error) {
       console.error('Error fetching discoveries:', error);
-      return;
-    }
-
-    if (data) {
-      setDiscoveries(data.map(d => ({ imageUrl: d.image_url, fact: d.fact })));
+      toast({
+        title: "Error",
+        description: "Failed to load recent discoveries.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -44,18 +50,12 @@ const Index = () => {
 
     try {
       // Call Nebius API through Edge Function
-      const response = await fetch('https://uvyjxyhxwgjrvtaeuzme.functions.supabase.co/analyze-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ image_url: imageUrl }),
+      const response = await supabase.functions.invoke('analyze-image', {
+        body: { image_url: imageUrl },
       });
 
-      const { fact, error } = await response.json();
-
-      if (error) throw new Error(error);
+      if (response.error) throw new Error(response.error.message);
+      const { fact } = response.data;
 
       setCurrentFact(fact);
 
