@@ -9,7 +9,7 @@ interface FactCardProps {
 
 const FactCard = ({ imageUrl, fact }: FactCardProps) => {
   return (
-    <Card className="w-full max-w-md overflow-hidden animate-slide-up">
+    <Card className="w-full overflow-hidden animate-slide-up bg-white shadow-lg">
       <div className="aspect-video relative">
         <img
           src={imageUrl}
@@ -20,7 +20,7 @@ const FactCard = ({ imageUrl, fact }: FactCardProps) => {
       <div className="p-6">
         <div className="flex items-start gap-3">
           <Lightbulb className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
-          <p className="text-lg leading-relaxed">{fact}</p>
+          <p className="text-lg leading-relaxed text-gray-700">{fact}</p>
         </div>
       </div>
     </Card>

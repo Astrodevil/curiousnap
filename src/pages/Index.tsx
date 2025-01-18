@@ -4,6 +4,8 @@ import FactCard from '@/components/FactCard';
 import RecentDiscoveries from '@/components/RecentDiscoveries';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Card } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
 
 interface Discovery {
   imageUrl: string;
@@ -68,14 +70,12 @@ const Index = () => {
       const fact = response.data.fact;
       setCurrentFact(fact);
 
-      // Store the discovery in Supabase
       const { error: insertError } = await supabase
         .from('discoveries')
         .insert([{ image_url: imageUrl, fact }]);
 
       if (insertError) throw new Error(insertError.message);
 
-      // Refresh the recent discoveries
       await fetchRecentDiscoveries();
 
       toast({
@@ -95,38 +95,44 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-primary mb-2">Tumko Pata Hai?</h1>
-          <p className="text-gray-600 mb-1">Discover fascinating facts about anything!</p>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4">
+      <div className="max-w-6xl mx-auto space-y-12">
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl font-bold text-primary mb-2 animate-fade-in">Tumko Pata Hai?</h1>
+          <p className="text-gray-600 text-lg mb-1">Discover fascinating facts about anything!</p>
           <a 
             href="https://studio.nebius.ai/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-gray-500 hover:text-primary transition-colors"
+            className="inline-block text-sm text-primary hover:text-primary/80 transition-colors underline decoration-dotted"
           >
             Powered by Nebius AI Studio
           </a>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="space-y-8">
-            <CameraComponent onImageCapture={handleImageCapture} />
+        <div className="grid lg:grid-cols-2 gap-12">
+          <Card className="p-6 space-y-6 shadow-lg bg-white/50 backdrop-blur-sm">
+            <div className="space-y-6">
+              <CameraComponent onImageCapture={handleImageCapture} />
 
-            {isLoading && (
-              <div className="text-center text-gray-600 animate-pulse">
-                Analyzing image...
-              </div>
-            )}
+              {isLoading && (
+                <div className="flex items-center justify-center space-x-2 text-primary animate-pulse">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Analyzing your image...</span>
+                </div>
+              )}
 
-            {currentImage && currentFact && (
-              <FactCard imageUrl={currentImage} fact={currentFact} />
-            )}
-          </div>
+              {currentImage && currentFact && (
+                <FactCard imageUrl={currentImage} fact={currentFact} />
+              )}
+            </div>
+          </Card>
 
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-800">Recent Discoveries</h2>
+          <div className="space-y-6">
+            <h2 className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+              <span>Recent Discoveries</span>
+              <span className="text-sm font-normal text-gray-500">(Latest 5)</span>
+            </h2>
             <RecentDiscoveries discoveries={discoveries} />
           </div>
         </div>
