@@ -21,9 +21,20 @@ serve(async (req) => {
       throw new Error('Failed to fetch image')
     }
     
-    const imageData = await imageResponse.arrayBuffer()
-    const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageData)))
+    // Read the image data as an ArrayBuffer
+    const imageBuffer = await imageResponse.arrayBuffer()
+    // Convert to base64 more efficiently using chunks
+    const chunks = []
+    const uint8Array = new Uint8Array(imageBuffer)
+    const chunkSize = 32768
     
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      chunks.push(String.fromCharCode.apply(null, uint8Array.subarray(i, i + chunkSize)))
+    }
+    
+    const base64Image = btoa(chunks.join(''))
+    
+    console.log('Making request to Nebius API...')
     const response = await fetch('https://vision.api.nebius.cloud/vision/v1/detect', {
       method: 'POST',
       headers: {
