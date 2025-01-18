@@ -69,7 +69,7 @@ serve(async (req) => {
             content: [
               { 
                 type: "text", 
-                text: "Analyze this image and provide an interesting fact. If it's a food item, include nutritional information, origin, or cultural significance. Format your response as a JSON object with 'description' (brief description of what you see) and 'fact' (an interesting fact about the main subject). Keep the fact engaging, educational, and if it's food, include health benefits or cultural context." 
+                text: "Analyze this image and provide an interesting fact. If it's a food item, include nutritional information, origin, and cultural significance. Format your response as a JSON object with ONLY two fields: 'description' (brief description of what you see) and 'fact' (a single paragraph containing the interesting fact, nutrition info for food, and cultural context if relevant). Keep the fact engaging and educational." 
               },
               { type: "image_url", image_url: { url: image_url } }
             ]
