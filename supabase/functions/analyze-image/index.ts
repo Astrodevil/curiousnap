@@ -15,36 +15,54 @@ serve(async (req) => {
     const { image_url } = await req.json()
     console.log('Analyzing image:', image_url)
     
-    const response = await fetch('https://api.nebius.ai/v1/vision/analyze', {
+    // First, fetch the image data
+    const imageResponse = await fetch(image_url)
+    if (!imageResponse.ok) {
+      throw new Error('Failed to fetch image')
+    }
+    
+    const imageData = await imageResponse.arrayBuffer()
+    const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageData)))
+    
+    const response = await fetch('https://vision.api.nebius.cloud/vision/v1/detect', {
       method: 'POST',
       headers: {
         'Authorization': `Api-Key ${Deno.env.get('NEBIUS_API_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        image_url,
-        features: [
-          {
-            feature_type: 'OBJECT_DETECTION',
-            max_results: 5
-          },
-          {
-            feature_type: 'TEXT_DETECTION',
-            max_results: 5
-          }
-        ]
+        folderId: "b1g1234567890",
+        analyze_specs: [{
+          content: base64Image,
+          features: [{
+            type: 'CLASSIFICATION',
+            maxResults: 5
+          }, {
+            type: 'TEXT_DETECTION',
+            maxResults: 5
+          }]
+        }]
       })
     })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Nebius API error:', errorText)
+      throw new Error(`Nebius API error: ${response.status} ${errorText}`)
+    }
 
     const data = await response.json()
     console.log('Nebius API response:', data)
     
     // Generate a fact based on the detected objects and text
     let fact = "I can see "
-    if (data.objects && data.objects.length > 0) {
-      fact += data.objects.slice(0, 3).map((obj: any) => obj.name).join(", ")
-    } else if (data.text && data.text.length > 0) {
-      fact += `text that reads "${data.text[0].text}"`
+    if (data.results?.[0]?.results?.[0]?.classifications) {
+      fact += data.results[0].results[0].classifications
+        .slice(0, 3)
+        .map((obj: any) => obj.label)
+        .join(", ")
+    } else if (data.results?.[0]?.results?.[0]?.textDetection?.pages?.[0]?.blocks) {
+      fact += `text that reads "${data.results[0].results[0].textDetection.pages[0].blocks[0].text}"`
     } else {
       fact += "an interesting image"
     }
