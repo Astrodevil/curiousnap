@@ -49,14 +49,23 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      // Call Nebius API through Edge Function
       const response = await supabase.functions.invoke('analyze-image', {
         body: { image_url: imageUrl },
       });
 
       if (response.error) throw new Error(response.error.message);
-      const { fact } = response.data;
+      
+      if (response.data.error) {
+        toast({
+          title: "Warning",
+          description: response.data.error,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
 
+      const fact = response.data.fact;
       setCurrentFact(fact);
 
       // Store the discovery in Supabase
@@ -70,8 +79,8 @@ const Index = () => {
       await fetchRecentDiscoveries();
 
       toast({
-        title: "New Discovery!",
-        description: fact,
+        title: "Discovery Made!",
+        description: "Your image has been analyzed successfully.",
       });
     } catch (error) {
       console.error('Error:', error);
@@ -87,25 +96,40 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-md mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-primary mb-2">Tumko Pata Hai?</h1>
-          <p className="text-gray-600">Discover fascinating facts about anything!</p>
+          <p className="text-gray-600 mb-1">Discover fascinating facts about anything!</p>
+          <a 
+            href="https://studio.nebius.ai/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-gray-500 hover:text-primary transition-colors"
+          >
+            Powered by Nebius AI Studio
+          </a>
         </div>
 
-        <CameraComponent onImageCapture={handleImageCapture} />
+        <div className="grid md:grid-cols-2 gap-8">
+          <div className="space-y-8">
+            <CameraComponent onImageCapture={handleImageCapture} />
 
-        {isLoading && (
-          <div className="text-center text-gray-600">
-            Analyzing image...
+            {isLoading && (
+              <div className="text-center text-gray-600 animate-pulse">
+                Analyzing image...
+              </div>
+            )}
+
+            {currentImage && currentFact && (
+              <FactCard imageUrl={currentImage} fact={currentFact} />
+            )}
           </div>
-        )}
 
-        {currentImage && currentFact && (
-          <FactCard imageUrl={currentImage} fact={currentFact} />
-        )}
-
-        <RecentDiscoveries discoveries={discoveries} />
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-gray-800">Recent Discoveries</h2>
+            <RecentDiscoveries discoveries={discoveries} />
+          </div>
+        </div>
       </div>
     </div>
   );

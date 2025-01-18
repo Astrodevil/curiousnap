@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
+import { Lightbulb } from 'lucide-react';
 
 interface Discovery {
   imageUrl: string;
@@ -11,23 +12,33 @@ interface RecentDiscoveriesProps {
 }
 
 const RecentDiscoveries = ({ discoveries }: RecentDiscoveriesProps) => {
-  if (discoveries.length === 0) return null;
+  if (discoveries.length === 0) {
+    return (
+      <div className="text-center text-gray-500 p-4">
+        No discoveries yet. Be the first to discover something interesting!
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full max-w-md">
-      <h2 className="text-xl font-semibold mb-4">Recent Discoveries</h2>
-      <div className="space-y-4">
-        {discoveries.map((discovery, index) => (
-          <Card key={index} className="p-4 flex gap-4 animate-fade-in">
+    <div className="space-y-4">
+      {discoveries.map((discovery, index) => (
+        <Card key={index} className="overflow-hidden animate-fade-in">
+          <div className="flex gap-4 p-4">
             <img
               src={discovery.imageUrl}
               alt="Recent discovery"
-              className="w-20 h-20 object-cover rounded"
+              className="w-24 h-24 object-cover rounded"
             />
-            <p className="text-sm flex-1">{discovery.fact}</p>
-          </Card>
-        ))}
-      </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start gap-2">
+                <Lightbulb className="w-4 h-4 text-primary flex-shrink-0 mt-1" />
+                <p className="text-sm text-gray-700 line-clamp-4">{discovery.fact}</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      ))}
     </div>
   );
 };

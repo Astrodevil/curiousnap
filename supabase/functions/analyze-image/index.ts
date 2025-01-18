@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,7 +7,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -15,6 +15,39 @@ serve(async (req) => {
     const { image_url } = await req.json()
     console.log('Analyzing image:', image_url)
 
+    // First, check if the image is safe
+    const safetyCheckResponse = await fetch('https://api.studio.nebius.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('NEBIUS_API_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        max_tokens: 50,
+        temperature: 0,
+        model: "Qwen/Qwen2-VL-72B-Instruct",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "Is this image safe for work? Only respond with 'SAFE' or 'UNSAFE'. Be strict about this." },
+              { type: "image_url", image_url: { url: image_url } }
+            ]
+          }
+        ]
+      })
+    })
+
+    const safetyData = await safetyCheckResponse.json()
+    const safetyResult = safetyData.choices[0].message.content.toLowerCase()
+
+    if (safetyResult.includes('unsafe')) {
+      return new Response(
+        JSON.stringify({ error: 'This image appears to contain inappropriate content.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      )
+    }
+
     const response = await fetch('https://api.studio.nebius.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -22,8 +55,8 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        max_tokens: 100,
-        temperature: 1,
+        max_tokens: 150,
+        temperature: 0.7,
         top_p: 1,
         top_k: 50,
         n: 1,
@@ -35,13 +68,8 @@ serve(async (req) => {
           {
             role: "user",
             content: [
-              { type: "text", text: "What's in this image? Provide a brief, interesting fact about what you see." },
-              {
-                type: "image_url",
-                image_url: {
-                  url: image_url
-                }
-              }
+              { type: "text", text: "Analyze this image and provide an interesting fact about what you see. Format your response as a JSON object with 'description' (brief description of what you see) and 'fact' (an interesting fact about the main subject). Keep the fact engaging and educational." },
+              { type: "image_url", image_url: { url: image_url } }
             ]
           }
         ],
@@ -52,34 +80,30 @@ serve(async (req) => {
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Nebius API error:', errorText)
-      throw new Error(`Nebius API error: ${response.status} ${errorText}`)
+      throw new Error(`API error: ${response.status} ${await response.text()}`)
     }
 
     const data = await response.json()
-    console.log('Nebius API response:', data)
+    console.log('API response:', data)
 
-    // Extract the fact from the response
-    let fact = data.choices?.[0]?.message?.content
-    if (typeof fact === 'string') {
+    let result = data.choices[0].message.content
+    if (typeof result === 'string') {
       try {
-        const jsonFact = JSON.parse(fact)
-        fact = jsonFact.description || jsonFact.fact || fact
+        result = JSON.parse(result)
       } catch (e) {
-        // If parsing fails, use the raw text
-        console.log('Failed to parse JSON response:', e)
+        console.error('Failed to parse JSON response:', e)
+        result = { description: "Could not parse the response", fact: result }
       }
     }
 
     return new Response(
-      JSON.stringify({ fact: fact || "I see an interesting image" }),
+      JSON.stringify(result),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
-    console.error('Error analyzing image:', error)
+    console.error('Error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Failed to analyze image. Please try again.' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }
