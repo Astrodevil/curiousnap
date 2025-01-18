@@ -14,45 +14,38 @@ serve(async (req) => {
   try {
     const { image_url } = await req.json()
     console.log('Analyzing image:', image_url)
-    
-    // First, fetch the image data
-    const imageResponse = await fetch(image_url)
-    if (!imageResponse.ok) {
-      throw new Error('Failed to fetch image')
-    }
-    
-    // Read the image data as an ArrayBuffer
-    const imageBuffer = await imageResponse.arrayBuffer()
-    // Convert to base64 more efficiently using chunks
-    const chunks = []
-    const uint8Array = new Uint8Array(imageBuffer)
-    const chunkSize = 32768
-    
-    for (let i = 0; i < uint8Array.length; i += chunkSize) {
-      chunks.push(String.fromCharCode.apply(null, uint8Array.subarray(i, i + chunkSize)))
-    }
-    
-    const base64Image = btoa(chunks.join(''))
-    
-    console.log('Making request to Nebius API...')
-    const response = await fetch('https://vision.api.nebius.cloud/vision/v1/detect', {
+
+    const response = await fetch('https://api.studio.nebius.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Api-Key ${Deno.env.get('NEBIUS_API_KEY')}`,
+        'Authorization': `Bearer ${Deno.env.get('NEBIUS_API_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        folderId: "b1g1234567890",
-        analyze_specs: [{
-          content: base64Image,
-          features: [{
-            type: 'CLASSIFICATION',
-            maxResults: 5
-          }, {
-            type: 'TEXT_DETECTION',
-            maxResults: 5
-          }]
-        }]
+        max_tokens: 100,
+        temperature: 1,
+        top_p: 1,
+        top_k: 50,
+        n: 1,
+        stream: false,
+        model: "Qwen/Qwen2-VL-72B-Instruct",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "What's in this image? Provide a brief, interesting fact about what you see." },
+              {
+                type: "image_url",
+                image_url: {
+                  url: image_url,
+                },
+              },
+            ]
+          }
+        ],
+        response_format: {
+          type: "json_object"
+        }
       })
     })
 
@@ -64,22 +57,21 @@ serve(async (req) => {
 
     const data = await response.json()
     console.log('Nebius API response:', data)
-    
-    // Generate a fact based on the detected objects and text
-    let fact = "I can see "
-    if (data.results?.[0]?.results?.[0]?.classifications) {
-      fact += data.results[0].results[0].classifications
-        .slice(0, 3)
-        .map((obj: any) => obj.label)
-        .join(", ")
-    } else if (data.results?.[0]?.results?.[0]?.textDetection?.pages?.[0]?.blocks) {
-      fact += `text that reads "${data.results[0].results[0].textDetection.pages[0].blocks[0].text}"`
-    } else {
-      fact += "an interesting image"
+
+    // Extract the fact from the response
+    let fact = data.choices?.[0]?.message?.content
+    if (typeof fact === 'string') {
+      try {
+        const jsonFact = JSON.parse(fact)
+        fact = jsonFact.description || jsonFact.fact || fact
+      } catch (e) {
+        // If parsing fails, use the raw text
+        console.log('Failed to parse JSON response:', e)
+      }
     }
 
     return new Response(
-      JSON.stringify({ fact }),
+      JSON.stringify({ fact: fact || "I see an interesting image" }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
