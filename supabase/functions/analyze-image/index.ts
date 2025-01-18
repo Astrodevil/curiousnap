@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -68,7 +67,10 @@ serve(async (req) => {
           {
             role: "user",
             content: [
-              { type: "text", text: "Analyze this image and provide an interesting fact about what you see. Format your response as a JSON object with 'description' (brief description of what you see) and 'fact' (an interesting fact about the main subject). Keep the fact engaging and educational." },
+              { 
+                type: "text", 
+                text: "Analyze this image and provide an interesting fact. If it's a food item, include nutritional information, origin, or cultural significance. Format your response as a JSON object with 'description' (brief description of what you see) and 'fact' (an interesting fact about the main subject). Keep the fact engaging, educational, and if it's food, include health benefits or cultural context." 
+              },
               { type: "image_url", image_url: { url: image_url } }
             ]
           }
