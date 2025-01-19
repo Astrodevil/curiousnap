@@ -12,7 +12,19 @@ serve(async (req) => {
 
   try {
     const { image_url } = await req.json()
-    console.log('Analyzing image:', image_url)
+    
+    if (!image_url) {
+      console.error('No image URL provided in request body');
+      return new Response(
+        JSON.stringify({ error: 'No image URL provided' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    console.log('Analyzing image:', image_url.substring(0, 100) + '...'); // Log truncated URL for debugging
 
     // First, check if the image is safe
     const safetyCheckResponse = await fetch('https://api.studio.nebius.ai/v1/chat/completions', {
@@ -38,8 +50,9 @@ serve(async (req) => {
     })
 
     const safetyData = await safetyCheckResponse.json()
+    console.log('Safety check response:', safetyData);
+    
     const safetyResult = safetyData.choices[0].message.content.toLowerCase()
-
     if (safetyResult.includes('unsafe')) {
       return new Response(
         JSON.stringify({ error: 'This image appears to contain inappropriate content.' }),
@@ -63,7 +76,7 @@ serve(async (req) => {
             content: [
               { 
                 type: "text", 
-                text: "Analyze this image and provide information. If it's a food item, include nutritional value, origin, and cultural significance. Format your response as a single paragraph that flows naturally. For food items, start with 'This is [food name],' then describe origin, then nutrition, then cultural significance. For non-food items, provide interesting facts and context. Keep the response engaging and educational, avoiding JSON formatting or bullet points." 
+                text: "Analyze this image and provide a single, well-formatted paragraph of information. If it's a food item, include: 1) what it is, 2) its origin, 3) nutritional highlights, and 4) cultural significance. For non-food items, provide interesting facts and context. Keep the response natural and engaging, avoiding technical formatting." 
               },
               { type: "image_url", image_url: { url: image_url } }
             ]
@@ -73,21 +86,22 @@ serve(async (req) => {
     })
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status} ${await response.text()}`)
+      console.error('API error:', await response.text());
+      throw new Error(`API error: ${response.status}`);
     }
 
     const data = await response.json()
-    console.log('API response:', data)
+    console.log('Analysis response:', data);
 
-    // Extract the text content directly
-    const fact = data.choices[0].message.content
+    // Extract the text content and ensure it's properly formatted
+    const fact = data.choices[0].message.content.trim();
 
     return new Response(
-      JSON.stringify({ description: "", fact: fact }),
+      JSON.stringify({ fact }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error:', error);
     return new Response(
       JSON.stringify({ error: 'Failed to analyze image. Please try again.' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }

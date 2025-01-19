@@ -47,15 +47,30 @@ const Index = () => {
   };
 
   const handleImageCapture = async (imageUrl: string) => {
+    if (!imageUrl) {
+      toast({
+        title: "Error",
+        description: "No image provided. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setCurrentImage(imageUrl);
     setIsLoading(true);
 
     try {
+      console.log('Sending image for analysis:', imageUrl.substring(0, 100) + '...');
+      
       const response = await supabase.functions.invoke('analyze-image', {
         body: { image_url: imageUrl },
       });
 
-      if (response.error) throw new Error(response.error.message);
+      console.log('Edge function response:', response);
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
       
       if (response.data.error) {
         toast({
@@ -74,7 +89,7 @@ const Index = () => {
         .from('discoveries')
         .insert([{ image_url: imageUrl, fact }]);
 
-      if (insertError) throw new Error(insertError.message);
+      if (insertError) throw insertError;
 
       await fetchRecentDiscoveries();
 
