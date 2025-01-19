@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Camera, Upload } from 'lucide-react';
+import { Camera, Upload, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface CameraProps {
@@ -7,6 +7,7 @@ interface CameraProps {
 }
 
 const CameraComponent = ({ onImageCapture }: CameraProps) => {
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -29,27 +30,42 @@ const CameraComponent = ({ onImageCapture }: CameraProps) => {
         type="file"
         accept="image/*"
         capture="environment"
+        ref={cameraInputRef}
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+      <input
+        type="file"
+        accept="image/*"
         ref={fileInputRef}
         onChange={handleFileUpload}
         className="hidden"
       />
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-4">
         <Button
-          onClick={() => fileInputRef.current?.click()}
-          className="bg-primary hover:bg-primary/90 text-white flex gap-2 items-center"
+          onClick={() => cameraInputRef.current?.click()}
+          className="bg-primary hover:bg-primary/90 text-white flex gap-2 items-center min-w-[160px]"
           disabled={isLoading}
         >
-          <Camera className="w-5 h-5" />
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Camera className="w-5 h-5" />
+          )}
           Take Photo
         </Button>
         <Button
           onClick={() => fileInputRef.current?.click()}
           variant="outline"
-          className="flex gap-2 items-center"
+          className="flex gap-2 items-center border-primary/20 hover:bg-primary/5 min-w-[160px]"
           disabled={isLoading}
         >
-          <Upload className="w-5 h-5" />
-          Upload
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Upload className="w-5 h-5" />
+          )}
+          Upload Image
         </Button>
       </div>
     </div>

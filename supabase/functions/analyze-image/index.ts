@@ -56,12 +56,6 @@ serve(async (req) => {
       body: JSON.stringify({
         max_tokens: 150,
         temperature: 0.7,
-        top_p: 1,
-        top_k: 50,
-        n: 1,
-        stream: false,
-        presence_penalty: 0,
-        frequency_penalty: 0,
         model: "Qwen/Qwen2-VL-72B-Instruct",
         messages: [
           {
@@ -69,15 +63,12 @@ serve(async (req) => {
             content: [
               { 
                 type: "text", 
-                text: "Analyze this image and provide an interesting fact. If it's a food item, include nutritional information, origin, and cultural significance. Format your response as a JSON object with ONLY two fields: 'description' (brief description of what you see) and 'fact' (a single paragraph containing the interesting fact, nutrition info for food, and cultural context if relevant). Keep the fact engaging and educational." 
+                text: "Analyze this image and provide information. If it's a food item, include nutritional value, origin, and cultural significance. Format your response as a single paragraph that flows naturally. For food items, start with 'This is [food name],' then describe origin, then nutrition, then cultural significance. For non-food items, provide interesting facts and context. Keep the response engaging and educational, avoiding JSON formatting or bullet points." 
               },
               { type: "image_url", image_url: { url: image_url } }
             ]
           }
-        ],
-        response_format: {
-          type: "json_object"
-        }
+        ]
       })
     })
 
@@ -88,18 +79,11 @@ serve(async (req) => {
     const data = await response.json()
     console.log('API response:', data)
 
-    let result = data.choices[0].message.content
-    if (typeof result === 'string') {
-      try {
-        result = JSON.parse(result)
-      } catch (e) {
-        console.error('Failed to parse JSON response:', e)
-        result = { description: "Could not parse the response", fact: result }
-      }
-    }
+    // Extract the text content directly
+    const fact = data.choices[0].message.content
 
     return new Response(
-      JSON.stringify(result),
+      JSON.stringify({ description: "", fact: fact }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
