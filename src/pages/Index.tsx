@@ -60,7 +60,12 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      console.log('Sending image for analysis:', imageUrl.substring(0, 100) + '...');
+      // Ensure the image URL is properly formatted
+      if (!imageUrl.startsWith('data:image/') && !imageUrl.startsWith('http')) {
+        throw new Error('Invalid image format');
+      }
+
+      console.log('Sending image for analysis...');
       
       const response = await supabase.functions.invoke('analyze-image', {
         body: { image_url: imageUrl },
@@ -101,7 +106,7 @@ const Index = () => {
       console.error('Error:', error);
       toast({
         title: "Error",
-        description: "Failed to analyze the image. Please try again.",
+        description: error.message || "Failed to analyze the image. Please try again.",
         variant: "destructive",
       });
     } finally {

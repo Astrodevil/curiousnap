@@ -24,7 +24,19 @@ serve(async (req) => {
       )
     }
 
-    console.log('Analyzing image:', image_url.substring(0, 100) + '...'); // Log truncated URL for debugging
+    // Validate the image URL format
+    if (!image_url.startsWith('data:image/') && !image_url.startsWith('http')) {
+      console.error('Invalid image URL format');
+      return new Response(
+        JSON.stringify({ error: 'Invalid image URL format' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    console.log('Processing image analysis request...');
 
     // First, check if the image is safe
     const safetyCheckResponse = await fetch('https://api.studio.nebius.ai/v1/chat/completions', {
@@ -49,6 +61,11 @@ serve(async (req) => {
       })
     })
 
+    if (!safetyCheckResponse.ok) {
+      console.error('Safety check failed:', await safetyCheckResponse.text());
+      throw new Error('Failed to perform safety check');
+    }
+
     const safetyData = await safetyCheckResponse.json()
     console.log('Safety check response:', safetyData);
     
@@ -59,6 +76,8 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       )
     }
+
+    console.log('Image passed safety check, proceeding with analysis...');
 
     const response = await fetch('https://api.studio.nebius.ai/v1/chat/completions', {
       method: 'POST',
@@ -86,14 +105,13 @@ serve(async (req) => {
     })
 
     if (!response.ok) {
-      console.error('API error:', await response.text());
-      throw new Error(`API error: ${response.status}`);
+      console.error('Analysis failed:', await response.text());
+      throw new Error('Failed to analyze image');
     }
 
     const data = await response.json()
-    console.log('Analysis response:', data);
+    console.log('Analysis completed successfully');
 
-    // Extract the text content and ensure it's properly formatted
     const fact = data.choices[0].message.content.trim();
 
     return new Response(
@@ -101,10 +119,16 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in analyze-image function:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to analyze image. Please try again.' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({ 
+        error: 'Failed to analyze image. Please try again.',
+        details: error.message 
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+        status: 500 
+      }
     )
   }
 })
