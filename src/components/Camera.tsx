@@ -16,10 +16,24 @@ const CameraComponent = ({ onImageCapture }: CameraProps) => {
     if (file) {
       setIsLoading(true);
       const reader = new FileReader();
+      
       reader.onloadend = () => {
-        onImageCapture(reader.result as string);
+        const result = reader.result;
+        if (typeof result === 'string' && result.startsWith('data:image/')) {
+          console.log('Image loaded successfully, size:', Math.round(result.length / 1024), 'KB');
+          onImageCapture(result);
+        } else {
+          console.error('Invalid image format');
+        }
         setIsLoading(false);
       };
+
+      reader.onerror = () => {
+        console.error('Error reading file');
+        setIsLoading(false);
+      };
+
+      // Read the file as a data URL
       reader.readAsDataURL(file);
     }
   };
